@@ -11,11 +11,14 @@
 
 #define COUNTDOWN       15
 #define DECIMAL_BASE    10
+#define ANSWER_TO_EVERYTHING 42
+#define FORKED_LOTS     12
 
 typedef struct {
     int countdown;
     bool forkbomb;
     int forkcount;
+    int correctguess;
 } SecretSettings;
 
 void interrupt(int s) {
@@ -34,7 +37,37 @@ void interrupt(int s) {
     }
 }
 
+SecretSettings parse_secrets(int argc, char *argv[]) {
+    SecretSettings params = {
+        .countdown = 15, .forkbomb = false, .forkcount = 2, .correctguess = 4
+    };
+    int opt;
+    /* Blame user if arguments are cooked */
+    while ((opt = getopt(argc, argv, "c:bf:g")) != -1) {
+        switch (opt) {
+        case 'c':
+            params.countdown = atoi(optarg);
+            break;
+        case 'b':
+            params.forkbomb = true; /* Uh oh, forkbomb activated */
+            break;
+        case 'f':
+            params.forkcount = atoi(optarg);
+            break;
+        case 'g':
+            params.correctguess = atoi(optarg);
+            break;
+        default:
+            fprintf(stderr, "Usage: %s [-c loops] [-b] [-f forks]\n",
+                    argv[0]);
+            exit(1);
+        }
+    }
+    return params;
+}
+
 int main(int argc, char *argv[]) {
+    SecretSettings params = parse_secrets(argc, argv);
     char *line = NULL;
     size_t length = 0;
     char *endptr;
@@ -48,8 +81,9 @@ int main(int argc, char *argv[]) {
     sigaction(SIGQUIT, &sa, 0);
     sigaction(SIGTSTP, &sa, 0);
 
-    int countdown = COUNTDOWN;
-    while (true) {
+    int countdown = (params.countdown == 0) ? COUNTDOWN : params.countdown;
+    while (true)
+    {
         sleep(1.5);
         printf("Haiii :3\n");
         printf("Fork bombing your device in %d!!!\n", countdown);
@@ -65,7 +99,7 @@ int main(int argc, char *argv[]) {
         printf("Hmm... no guess... straight to the blender >:3\n");
         goto forkbomb;
     }
-    guess = strtol(line, &endptr, 10);
+    guess = strtol(line, &endptr, DECIMAL_BASE);
     if (errno) {
         printf("Wrong format... bombing\n");
         goto forkbomb;
@@ -74,7 +108,7 @@ int main(int argc, char *argv[]) {
         printf("Hmm... no digits found\n");
         goto forkbomb;
     }
-    if (guess != 4) {
+    if (guess != params.correctguess) {
         printf("Wrong number hehehe\n");
         goto forkbomb;
     } else {
@@ -83,12 +117,22 @@ int main(int argc, char *argv[]) {
     }
 
 forkbomb:
-    for (int i = 0; i < 2; i++) {
+    if (params.forkbomb) {
+        printf("Uh oh, infinite forkbomb activated...\n");
+        printf("Current Version doesn't support forkbomb for testing safety\n");
+        // while (true)
+        // {
+        //     fork();
+        // }
+        return (ANSWER_TO_EVERYTHING);
+    }
+    for (int i = 0; i < 1; i++) {
         if (fork()) {
             printf("Fork %d in parent\n", i);
         } else {
             printf("Fork %d in child\n", i);
         }
     }
-        return (12);
+    
+    return (FORKED_LOTS);
 }
